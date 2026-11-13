@@ -1,10 +1,3 @@
-"""Train a dual-branch cross-attention load-identification network.
-
-The three thermal coefficients and two uncertainty coefficients are separate
-key/value tokens. This script saves a new checkpoint and does not overwrite the
-legacy Net_Model.pth or saved_ANN/model_new.pth files.
-"""
-
 import argparse
 import json
 import random
@@ -19,21 +12,25 @@ class ScalarTokenAttention(nn.Module):
     def __init__(self, x_dim: int, z_dim: int, hidden_dim: int = 32, num_heads: int = 4):
         super().__init__()
         if z_dim < 2 or hidden_dim % num_heads:
-            raise ValueError("Need at least two auxiliary tokens and divisible head width")
+            raise ValueError(
+                "Need at least two auxiliary tokens and divisible head width")
         self.z_dim = z_dim
         self.num_heads = num_heads
         self.query = nn.Linear(x_dim, hidden_dim)
         self.scalar_embedding = nn.Linear(1, hidden_dim)
         self.feature_identity = nn.Embedding(z_dim, hidden_dim)
-        self.attention = nn.MultiheadAttention(hidden_dim, num_heads, batch_first=True)
+        self.attention = nn.MultiheadAttention(
+            hidden_dim, num_heads, batch_first=True)
         self.output = nn.Linear(hidden_dim, x_dim)
 
     def forward(self, x: torch.Tensor, z: torch.Tensor, return_weights: bool = False):
         if x.ndim != 2 or z.ndim != 2 or x.shape[0] != z.shape[0] or z.shape[1] != self.z_dim:
-            raise ValueError(f"Expected x=(batch, features), z=(batch, {self.z_dim})")
+            raise ValueError(
+                f"Expected x=(batch, features), z=(batch, {self.z_dim})")
         q = self.query(x).unsqueeze(1)  # (batch, 1, hidden_dim)
         ids = torch.arange(self.z_dim, device=z.device)
-        tokens = self.scalar_embedding(z.unsqueeze(-1)) + self.feature_identity(ids)
+        tokens = self.scalar_embedding(
+            z.unsqueeze(-1)) + self.feature_identity(ids)
         # Per head, softmax runs over 3 thermal tokens or 2 uncertainty tokens.
         context, weights = self.attention(
             q, tokens, tokens,
@@ -88,9 +85,11 @@ def _read_training_data(folder: Path):
     z2 = np.loadtxt(folder / "merged_uq_data.txt").T
     y = np.loadtxt(folder / "merged_F_data.txt").reshape(-1, 1)
     if x.shape[1:] != (20,) or z1.shape[1:] != (3,) or z2.shape[1:] != (2,):
-        raise ValueError(f"Unexpected feature shapes: {x.shape}, {z1.shape}, {z2.shape}")
+        raise ValueError(
+            f"Unexpected feature shapes: {x.shape}, {z1.shape}, {z2.shape}")
     if len({len(x), len(z1), len(z2), len(y)}) != 1:
-        raise ValueError("Training inputs and targets have different sample counts")
+        raise ValueError(
+            "Training inputs and targets have different sample counts")
     if not all(np.isfinite(a).all() for a in (x, z1, z2, y)):
         raise ValueError("Training data contains non-finite values")
     return [torch.tensor(a, dtype=torch.float32) for a in (x, z1, z2, y)]
@@ -100,7 +99,8 @@ def _statistics(training_tensors):
     result = {}
     for name, tensor in zip(("x", "z1", "z2", "y"), training_tensors):
         result[name + "_mean"] = tensor.mean(dim=0)
-        result[name + "_std"] = tensor.std(dim=0, unbiased=False).clamp_min(1e-8)
+        result[name + "_std"] = tensor.std(dim=0,
+                                           unbiased=False).clamp_min(1e-8)
     return result
 
 
@@ -123,7 +123,8 @@ def train(data_dir: Path, checkpoint_path: Path, metrics_path: Path,
     device = torch.device(device_name)
     arrays = _read_training_data(data_dir)
     if len(arrays[0]) != 4000:
-        raise ValueError("Expected 4000 samples; define a new split for a different dataset")
+        raise ValueError(
+            "Expected 4000 samples; define a new split for a different dataset")
 
     # Keep the original last 400 samples as the held-out test set.
     # The final 400 of the former training segment form a validation set.
@@ -134,7 +135,8 @@ def train(data_dir: Path, checkpoint_path: Path, metrics_path: Path,
     sets = {name: [tensor[sl].to(device) for tensor in normalized]
             for name, sl in splits.items()}
     model = BPPointNet().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=3e-3, weight_decay=1e-4)
+    optimizer = torch.optim.Adam(
+        model.parameters(), lr=3e-3, weight_decay=1e-4)
     criterion = nn.MSELoss()
     best_loss = float("inf")
     best_state = None
@@ -162,7 +164,8 @@ def train(data_dir: Path, checkpoint_path: Path, metrics_path: Path,
         else:
             wait += 1
         if epoch == 1 or epoch % 100 == 0:
-            print(f"Epoch {epoch}: train MSE={float(loss):.6g}, val MSE={val_loss:.6g}")
+            print(
+                f"Epoch {epoch}: train MSE={float(loss):.6g}, val MSE={val_loss:.6g}")
         if wait >= patience:
             break
 
@@ -194,7 +197,8 @@ def train(data_dir: Path, checkpoint_path: Path, metrics_path: Path,
     ax.plot(index, prediction[:, 0].numpy(), label="Predicted", linewidth=1.5)
     ax.set_xlabel("Held-out sample index")
     ax.set_ylabel("Load (original data units)")
-    ax.set_title(f"Test load identification | relative L2 error: {metrics['relative_l2_test']:.2%}")
+    ax.set_title(
+        f"Test load identification | relative L2 error: {metrics['relative_l2_test']:.2%}")
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
@@ -210,7 +214,8 @@ def train(data_dir: Path, checkpoint_path: Path, metrics_path: Path,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data-dir", type=Path, default=Path(__file__).resolve().parent)
+    parser.add_argument("--data-dir", type=Path,
+                        default=Path(__file__).resolve().parent)
     parser.add_argument("--checkpoint", type=Path,
                         default=Path(__file__).resolve().parent / "Net_Attention_v3.pth")
     parser.add_argument("--metrics", type=Path,

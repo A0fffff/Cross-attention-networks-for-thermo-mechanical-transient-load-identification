@@ -1,16 +1,3 @@
-"""Fine-tune v3 attention for transient impact loads without touching old models.
-
-Input files have the same names and orientation as Net_v3_Attention.py. Each
-consecutive `case_length` samples must be one complete, aligned load history.
-At most one validation history is held out by case, never by individual time
-sample. External cases are evaluated by Plot_v3_Impact.py. Missing strains,
-unmatched auxiliary rows, and likely zero-filled missing data are rejected.
-
-The pointwise v3 network is initialized from a saved checkpoint. A centered
-temporal residual has a nine-sample receptive field and initially outputs zero,
-so the first prediction is exactly the pretrained pointwise prediction.
-"""
-
 import argparse
 import csv
 import hashlib
@@ -242,7 +229,8 @@ def main():
                                   args.aux_prefix_is_aligned)
     total = data_info["case_count"]
     if not 0 <= args.val_case <= total:
-        raise ValueError(f"Choose validation case in 0..{total}; 0 disables validation")
+        raise ValueError(
+            f"Choose validation case in 0..{total}; 0 disables validation")
     train_cases = [i for i in range(1, total + 1)
                    if i != args.val_case]
     if not train_cases:
@@ -357,11 +345,13 @@ def main():
         with (args.output_dir / "Impact_Attention_v3_validation_predictions.csv").open(
                 "w", newline="", encoding="utf-8") as stream:
             writer = csv.writer(stream)
-            writer.writerow(("case", "sample_index", "real_load", "predicted_load_raw"))
+            writer.writerow(
+                ("case", "sample_index", "real_load", "predicted_load_raw"))
             for i, (real, predicted) in enumerate(zip(
                     y[val_idx, :, 0].cpu().numpy(),
                     validation_prediction[0, :, 0].cpu().numpy())):
-                writer.writerow((args.val_case, i, float(real), float(predicted)))
+                writer.writerow(
+                    (args.val_case, i, float(real), float(predicted)))
         fig, ax = plt.subplots(figsize=(10, 4))
         ax.plot(y[val_idx, :, 0].cpu().numpy(), label="Real", linewidth=1.8)
         ax.plot(validation_prediction[0, :, 0].cpu().numpy(),

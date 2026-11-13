@@ -1,11 +1,3 @@
-"""Experimental fine-tuning for low-amplitude load identification.
-
-This augmentation is valid only if the strain input is the mechanical-strain
-response and scaling the applied load scales that response at fixed thermal
-field and structural parameters. It never uses test cases to update weights.
-The frozen base checkpoint is retained unchanged for reproducibility.
-"""
-
 from Net_v3_Attention import BPPointNet, _read_training_data
 import json
 import pathlib
