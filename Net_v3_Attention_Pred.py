@@ -59,9 +59,6 @@ def predict(checkpoint_path: Path, strains_file: Path, thermal_file: Path,
             raise ValueError(
                 "Target and input files have different sample counts")
         result["Real"] = target[:, 0].numpy()
-        relative_l2 = float(torch.linalg.vector_norm(prediction - target) /
-                            torch.linalg.vector_norm(target).clamp_min(1e-8))
-        print(f"Relative L2 error: {relative_l2:.6%}")
     if output_file is not None:
         output_file.parent.mkdir(parents=True, exist_ok=True)
         result.to_excel(output_file, index=False)
@@ -75,7 +72,7 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoint", type=Path,
                         default=script_dir / "Net_Attention_v3_amplitude_candidate.pth")
     parser.add_argument("--case-dir", type=Path,
-                        default=script_dir / "testdata" / "3")
+                        default=script_dir / "testdata" / "4")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--no-target", action="store_true")
     args = parser.parse_args()
